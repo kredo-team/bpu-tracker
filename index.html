@@ -149,7 +149,11 @@
   <div class="view-tabs">
     <button class="vtab active" id="vtab1" onclick="switchView(1)">Task view</button>
     <button class="vtab" id="vtab2" onclick="switchView(2)">Person view</button>
+    <button class="vtab" id="vtab3" onclick="switchView(3)">Summary view</button>
   </div>
+
+  <!-- Task view -->
+
 
   <!-- Task view -->
   <div id="taskView">
@@ -187,8 +191,29 @@
     </div>
   </div>
 
-  <!-- Person view -->
+  <!-- Person view — list -->
   <div id="personView" style="display:none;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px;">#</th>
+            <th>Name</th>
+            <th style="width:120px;text-align:center;">Pending</th>
+            <th style="width:120px;text-align:center;">In progress</th>
+            <th style="width:120px;text-align:center;">Completed</th>
+            <th style="width:100px;text-align:center;">Total</th>
+          </tr>
+        </thead>
+        <tbody id="summaryBody">
+          <tr><td colspan="6" class="empty-row">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Summary view — cards -->
+  <div id="summaryView" style="display:none;">
     <div class="person-grid" id="personGrid">
       <div style="text-align:center;padding:32px;color:#aaa;grid-column:1/-1;">Loading...</div>
     </div>
@@ -463,7 +488,6 @@ function drillPerson(name) {
   applyFilters();
   window.scrollTo(0, 0);
 }
-
 function clearPersonFilter() {
   const sel = document.getElementById('personFilter');
   sel.value = 'all';
@@ -476,11 +500,46 @@ function clearPersonFilter() {
   applyFilters();
 }
 
+function renderSummaryView() {
+  const people = {};
+  allTasks.forEach(t => {
+    if (!people[t.assigned_to]) people[t.assigned_to] = { pending:0, progress:0, done:0 };
+    const p = people[t.assigned_to];
+    if (t.status==='Pending') p.pending++;
+    else if (t.status==='In progress') p.progress++;
+    else p.done++;
+  });
+
+  const names = Object.keys(people).sort((a,b) => {
+    const ta = people[a], tb = people[b];
+    if (tb.progress !== ta.progress) return tb.progress - ta.progress;
+    if (tb.pending !== ta.pending) return tb.pending - ta.pending;
+    return 0;
+  });
+
+  document.getElementById('summaryBody').innerHTML = names.map((name, i) => {
+    const p = people[name];
+    const total = p.pending + p.progress + p.done;
+    return `<tr style="cursor:pointer;" onclick="drillPerson('${name.replace(/'/g,"\\'")}')">
+      <td style="color:#bbb;font-size:12px;">${i+1}</td>
+      <td style="font-weight:600;color:#111;">${name}</td>
+      <td style="text-align:center;font-weight:700;color:${p.pending>0?'#111':'#aaa'};">${p.pending}</td>
+      <td style="text-align:center;font-weight:700;color:${p.progress>0?'#111':'#aaa'};">${p.progress}</td>
+      <td style="text-align:center;font-weight:700;color:${p.done>0?'#111':'#aaa'};">${p.done}</td>
+      <td style="text-align:center;font-weight:700;color:#111;">${total}</td>
+    </tr>`;
+  }).join('');
+}
+
 function switchView(n) {
-  document.getElementById('taskView').style.display = n===1 ? 'block' : 'none';
-  document.getElementById('personView').style.display = n===2 ? 'block' : 'none';
+  document.getElementById('taskView').style.display    = n===1 ? 'block' : 'none';
+  document.getElementById('personView').style.display  = n===2 ? 'block' : 'none';
+  document.getElementById('summaryView').style.display = n===3 ? 'block' : 'none';
   document.getElementById('vtab1').className = 'vtab' + (n===1?' active':'');
   document.getElementById('vtab2').className = 'vtab' + (n===2?' active':'');
+  document.getElementById('vtab3').className = 'vtab' + (n===3?' active':'');
+  if (n===2) renderSummaryView();
+  if (n===3) renderPersonView();
 }
 
 loadData();
