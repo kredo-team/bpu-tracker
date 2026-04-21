@@ -141,11 +141,6 @@
     </div>
   </div>
 
-  <div id="deadlineBox" style="display:none;" class="deadline-box">
-    <div class="deadline-title">Upcoming deadlines</div>
-    <div id="deadlineList"></div>
-  </div>
-
   <div class="view-tabs">
     <button class="vtab active" id="vtab1" onclick="switchView(1)">Task view</button>
     <button class="vtab" id="vtab2" onclick="switchView(2)">Person view</button>
@@ -255,7 +250,6 @@ async function loadData() {
     updatePersonFilter();
     applyFilters();
     renderPersonView();
-    renderDeadlines();
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}).toUpperCase();
@@ -299,16 +293,6 @@ function updateCounts() {
   document.getElementById('cntPend').textContent = allTasks.filter(t=>t.status==='Pending').length;
   document.getElementById('cntProg').textContent = allTasks.filter(t=>t.status==='In progress').length;
   document.getElementById('cntDone').textContent = allTasks.filter(t=>t.status==='Completed').length;
-}
-
-function renderDeadlines() {
-  const upcoming = allTasks.filter(t => t.status!=='Completed' && t.deadline && t.deadline!=='—' && t.deadline!=='Not specified');
-  const box = document.getElementById('deadlineBox');
-  if (!upcoming.length) { box.style.display='none'; return; }
-  box.style.display='block';
-  document.getElementById('deadlineList').innerHTML = upcoming.slice(0,5).map(t =>
-    `<div class="deadline-row"><span>${t.task}</span><span>${t.assigned_to} — ${t.deadline}</span></div>`
-  ).join('');
 }
 
 function updatePersonFilter() {
