@@ -149,7 +149,10 @@
   <!-- Task view -->
   <div id="taskView">
     <div class="filter-bar">
-      <div class="filter-info" id="filterInfo">Showing all tasks</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button id="backBtn" onclick="clearPersonFilter()" style="display:none;padding:5px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;font-size:12px;cursor:pointer;font-family:Arial,sans-serif;">&#8592; Back</button>
+        <div class="filter-info" id="filterInfo">Showing all tasks</div>
+      </div>
       <div class="filter-right">
         <select id="personFilter" onchange="applyFilters()">
           <option value="all">All people</option>
@@ -443,20 +446,29 @@ function renderPersonView() {
 }
 
 function drillPerson(name) {
-  // Switch to task view
   switchView(1);
-  // Reset status filter to all
   activeStatus = 'all';
   document.querySelectorAll('.sum-card').forEach(c => c.classList.remove('active'));
   document.getElementById('card-all').classList.add('active');
-  // Set person filter
   const sel = document.getElementById('personFilter');
   sel.value = name;
-  // Apply filters
+  document.getElementById('backBtn').style.display = 'inline-block';
+  document.getElementById('personFilter').style.display = 'none';
   currentPage = 1;
   applyFilters();
-  // Scroll to top
   window.scrollTo(0, 0);
+}
+
+function clearPersonFilter() {
+  const sel = document.getElementById('personFilter');
+  sel.value = 'all';
+  document.getElementById('backBtn').style.display = 'none';
+  document.getElementById('personFilter').style.display = 'inline-block';
+  activeStatus = 'all';
+  document.querySelectorAll('.sum-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('card-all').classList.add('active');
+  currentPage = 1;
+  applyFilters();
 }
 
 function switchView(n) {
