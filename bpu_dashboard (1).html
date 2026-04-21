@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BPU &amp; Co — Work Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f4f4f4; min-height: 100vh; padding: 16px; color: #222; }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  .header { background: #1a1a1a; color: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .header-left h1 { font-size: 16px; font-weight: 700; }
+  .header-left p { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+  .live-badge { background: #EAF3DE; color: #27500A; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; }
+  .refresh-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family: Arial, sans-serif; }
+  .refresh-btn:hover { background: rgba(255,255,255,0.2); }
+
+  /* Summary */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .sum-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 12px; text-align: center; }
+  .sum-n { font-size: 24px; font-weight: 700; }
+  .sum-l { font-size: 11px; color: #888; margin-top: 2px; }
+  .n-all { color: #222; } .n-pend { color: #b45309; } .n-prog { color: #1d4ed8; } .n-done { color: #15803d; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab { font-size: 13px; padding: 7px 18px; border-radius: 7px; border: 1px solid #ddd; background: #fff; color: #555; cursor: pointer; font-family: Arial, sans-serif; }
+  .tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  /* Deadline box */
+  .deadline-box { background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; }
+  .deadline-title { font-size: 12px; font-weight: 700; color: #92400E; margin-bottom: 8px; }
+  .deadline-row { display: flex; justify-content: space-between; font-size: 12px; color: #78350F; padding: 4px 0; border-bottom: 1px solid #FDE68A; }
+  .deadline-row:last-child { border-bottom: none; }
+
+  /* Task table */
+  .table-wrap { overflow-x: auto; background: #fff; border: 1px solid #eee; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: #f5f5f5; padding: 9px 12px; text-align: left; font-size: 12px; color: #666; font-weight: 700; border-bottom: 1px solid #eee; }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid #f5f5f5; color: #333; vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #fafafa; }
+
+  /* Person grid */
+  .person-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .person-card { background: #fff; border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
+  .pc-head { padding: 12px 14px 8px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f5f5f5; }
+  .pc-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .pc-name { font-size: 14px; font-weight: 700; color: #111; }
+  .pc-total { font-size: 11px; color: #888; margin-top: 1px; }
+  .pc-stats { display: grid; grid-template-columns: repeat(3,1fr); border-bottom: 1px solid #f5f5f5; }
+  .pc-stat { text-align: center; padding: 8px 4px; }
+  .pc-num { font-size: 18px; font-weight: 700; }
+  .pc-lbl { font-size: 10px; color: #888; margin-top: 1px; }
+  .ps-p{color:#b45309;} .ps-i{color:#1d4ed8;} .ps-d{color:#15803d;}
+  .pc-bar-row { padding: 8px 12px 4px; display: flex; align-items: center; gap: 8px; }
+  .bar-track { flex: 1; height: 5px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+  .bar-pct { font-size: 11px; color: #888; min-width: 30px; text-align: right; }
+  .pc-tasks { padding: 6px 12px 10px; }
+  .pc-task-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f9f9f9; font-size: 12px; gap: 6px; }
+  .pc-task-row:last-child { border-bottom: none; }
+  .pc-task-name { color: #333; flex: 1; line-height: 1.4; }
+  .more-tasks { font-size: 11px; color: #aaa; text-align: center; padding-top: 4px; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .bp { background: #FEF3C7; color: #92400E; }
+  .bi { background: #DBEAFE; color: #1E3A8A; }
+  .bd { background: #DCFCE7; color: #14532D; }
+  .bh { background: #FEE2E2; color: #7F1D1D; }
+  .bm { background: #FEF3C7; color: #78350F; }
+  .bl { background: #F0FDF4; color: #14532D; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ftab { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; background: #fff; color: #555; cursor: pointer; font-family: Arial, sans-serif; }
+  .ftab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  select { font-size: 12px; padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; }
+
+  /* Status */
+  .status-bar { text-align: center; font-size: 12px; color: #aaa; padding: 12px 0 4px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #7f1d1d; margin: 12px 0; }
+
+  @media(max-width: 600px) {
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .person-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>BPU &amp; Co — Work Tracker</h1>
+      <p id="lastUpdated">Loading...</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="live-badge" id="liveBadge">Loading</span>
+      <button class="refresh-btn" onclick="loadData()">Refresh</button>
+    </div>
+  </div>
+
+  <!-- Loading / Error -->
+  <div id="statusArea"></div>
+
+  <!-- Summary -->
+  <div class="summary-grid">
+    <div class="sum-card"><div class="sum-n n-all" id="cntAll">—</div><div class="sum-l">Total tasks</div></div>
+    <div class="sum-card"><div class="sum-n n-pend" id="cntPend">—</div><div class="sum-l">Pending</div></div>
+    <div class="sum-card"><div class="sum-n n-prog" id="cntProg">—</div><div class="sum-l">In progress</div></div>
+    <div class="sum-card"><div class="sum-n n-done" id="cntDone">—</div><div class="sum-l">Completed</div></div>
+  </div>
+
+  <!-- Deadlines -->
+  <div id="deadlineBox" style="display:none;" class="deadline-box">
+    <div class="deadline-title">Upcoming deadlines</div>
+    <div id="deadlineList"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tab1" onclick="switchTab(1)">Task view</button>
+    <button class="tab" id="tab2" onclick="switchTab(2)">Person view</button>
+  </div>
+
+  <!-- Task view -->
+  <div id="taskView">
+    <div class="filter-bar">
+      <div class="filter-tabs">
+        <span class="ftab active" onclick="setFilter('all',this)">All</span>
+        <span class="ftab" onclick="setFilter('Pending',this)">Pending</span>
+        <span class="ftab" onclick="setFilter('In progress',this)">In progress</span>
+        <span class="ftab" onclick="setFilter('Completed',this)">Completed</span>
+      </div>
+      <select id="personFilter" onchange="renderTable()">
+        <option value="all">All people</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Task</th><th>Assigned to</th>
+            <th>Status</th><th>Deadline</th><th>Priority</th>
+          </tr>
+        </thead>
+        <tbody id="taskBody">
+          <tr><td colspan="6" style="text-align:center;padding:32px;color:#aaa;">Loading tasks...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Person view -->
+  <div id="personView" style="display:none;">
+    <div class="person-grid" id="personGrid">
+      <div style="text-align:center;padding:32px;color:#aaa;grid-column:1/-1;">Loading...</div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="footerStatus"></div>
+
+</div>
+
+<script>
+const SHEET_ID = '1xc0ySuQR6Ff3ztFH924wK1Nhg6_tQAnjwKohuanBgQM';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet1`;
+
+let allTasks = [];
+let activeFilter = 'all';
+const avatarColors = ['#1a1a1a','#1d4ed8','#15803d','#b45309','#7c3aed','#0f766e','#be185d','#c2410c','#0369a1','#065f46'];
+
+function statusBadge(s) {
+  const v = (s||'').toLowerCase();
+  if (v.includes('complet')||v.includes('done')) return `<span class="badge bd">Completed</span>`;
+  if (v.includes('progress')) return `<span class="badge bi">In progress</span>`;
+  return `<span class="badge bp">Pending</span>`;
+}
+
+function priorityBadge(p) {
+  const v = (p||'').toLowerCase();
+  if (v==='high') return `<span class="badge bh">High</span>`;
+  if (v==='low') return `<span class="badge bl">Low</span>`;
+  return `<span class="badge bm">Medium</span>`;
+}
+
+function normalizeStatus(s) {
+  const v = (s||'').toLowerCase();
+  if (v.includes('complet')||v.includes('done')) return 'Completed';
+  if (v.includes('progress')) return 'In progress';
+  return 'Pending';
+}
+
+function getInitials(name) {
+  return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+}
+
+async function loadData() {
+  document.getElementById('statusArea').innerHTML = `<div class="status-bar"><span class="spinner"></span>Loading latest data from Google Sheets...</div>`;
+  document.getElementById('liveBadge').textContent = 'Loading';
+
+  try {
+    const res = await fetch(SHEET_URL + '&t=' + Date.now());
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    if (rows.length < 2) {
+      showError('No tasks found in the sheet yet. Run the Cowork task first.');
+      return;
+    }
+
+    allTasks = rows.slice(1).filter(r => r[0] && r[0].trim()).map(r => ({
+      task:        (r[0]||'').trim(),
+      assigned_to: (r[1]||'Team').trim(),
+      status:      normalizeStatus(r[2]),
+      deadline:    (r[3]||'—').trim(),
+      priority:    (r[4]||'Medium').trim(),
+      source:      (r[5]||'').trim(),
+      updated:     (r[6]||'').trim()
+    }));
+
+    updateCounts();
+    updatePersonFilter();
+    renderTable();
+    renderPersonView();
+    renderDeadlines();
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}).toUpperCase();
+    const dateStr = now.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+    document.getElementById('lastUpdated').textContent = `Last refreshed: ${dateStr} ${timeStr}`;
+    document.getElementById('liveBadge').textContent = 'Live';
+    document.getElementById('statusArea').innerHTML = '';
+    document.getElementById('footerStatus').textContent = `${allTasks.length} tasks loaded — auto-updated every 15 min by Claude Cowork`;
+
+  } catch(e) {
+    showError('Could not load sheet. Make sure the Google Sheet is shared as "Anyone with the link can view".<br>Error: ' + e.message);
+  }
+}
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const row = [];
+    let inQuote = false, cell = '';
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c==='"') { inQuote = !inQuote; }
+      else if (c===',' && !inQuote) { row.push(cell.trim()); cell = ''; }
+      else { cell += c; }
+    }
+    row.push(cell.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+function showError(msg) {
+  document.getElementById('statusArea').innerHTML = `<div class="error-msg">${msg}</div>`;
+  document.getElementById('liveBadge').textContent = 'Error';
+}
+
+function updateCounts() {
+  document.getElementById('cntAll').textContent  = allTasks.length;
+  document.getElementById('cntPend').textContent = allTasks.filter(t=>t.status==='Pending').length;
+  document.getElementById('cntProg').textContent = allTasks.filter(t=>t.status==='In progress').length;
+  document.getElementById('cntDone').textContent = allTasks.filter(t=>t.status==='Completed').length;
+}
+
+function renderDeadlines() {
+  const upcoming = allTasks.filter(t => t.status!=='Completed' && t.deadline && t.deadline!=='—' && t.deadline!=='Not specified');
+  const box = document.getElementById('deadlineBox');
+  if (!upcoming.length) { box.style.display='none'; return; }
+  box.style.display='block';
+  document.getElementById('deadlineList').innerHTML = upcoming.slice(0,5).map(t =>
+    `<div class="deadline-row"><span>${t.task}</span><span>${t.assigned_to} — ${t.deadline}</span></div>`
+  ).join('');
+}
+
+function updatePersonFilter() {
+  const people = [...new Set(allTasks.map(t=>t.assigned_to))].sort();
+  const sel = document.getElementById('personFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="all">All people</option>';
+  people.forEach(p => {
+    const o = document.createElement('option');
+    o.value=p; o.textContent=p;
+    if(p===cur) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+function renderTable() {
+  const person = document.getElementById('personFilter').value;
+  const filtered = allTasks.filter(t => {
+    const sm = activeFilter==='all' || t.status===activeFilter;
+    const pm = person==='all' || t.assigned_to===person;
+    return sm && pm;
+  });
+
+  const tbody = document.getElementById('taskBody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:28px;color:#aaa;">No tasks match this filter</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((t,i) => `<tr>
+    <td style="color:#bbb;font-size:12px;">${i+1}</td>
+    <td style="font-weight:600;color:#111;max-width:240px;">${t.task}</td>
+    <td style="color:#444;">${t.assigned_to}</td>
+    <td>${statusBadge(t.status)}</td>
+    <td style="font-size:12px;color:#555;">${t.deadline}</td>
+    <td>${priorityBadge(t.priority)}</td>
+  </tr>`).join('');
+}
+
+function renderPersonView() {
+  const people = {};
+  allTasks.forEach(t => {
+    if (!people[t.assigned_to]) people[t.assigned_to] = { pending:0, progress:0, done:0, tasks:[] };
+    const p = people[t.assigned_to];
+    if (t.status==='Pending') p.pending++;
+    else if (t.status==='In progress') p.progress++;
+    else p.done++;
+    p.tasks.push(t);
+  });
+
+  const names = Object.keys(people).sort((a,b) => {
+    const ta = people[a], tb = people[b];
+    return (tb.pending+tb.progress+tb.done) - (ta.pending+ta.progress+ta.done);
+  });
+
+  const maxTotal = Math.max(...names.map(n => people[n].pending+people[n].progress+people[n].done));
+
+  document.getElementById('personGrid').innerHTML = names.map((name, idx) => {
+    const p = people[name];
+    const total = p.pending+p.progress+p.done;
+    const pct = maxTotal>0 ? Math.round((total/maxTotal)*100) : 0;
+    const color = avatarColors[idx % avatarColors.length];
+    const shown = p.tasks.slice(0, 4);
+    const more = p.tasks.length - shown.length;
+
+    return `<div class="person-card">
+      <div class="pc-head">
+        <div class="pc-avatar" style="background:${color};">${getInitials(name)}</div>
+        <div><div class="pc-name">${name}</div><div class="pc-total">${total} task${total!==1?'s':''} assigned</div></div>
+      </div>
+      <div class="pc-stats">
+        <div class="pc-stat"><div class="pc-num ps-p">${p.pending}</div><div class="pc-lbl">Pending</div></div>
+        <div class="pc-stat"><div class="pc-num ps-i">${p.progress}</div><div class="pc-lbl">In progress</div></div>
+        <div class="pc-stat"><div class="pc-num ps-d">${p.done}</div><div class="pc-lbl">Done</div></div>
+      </div>
+      <div class="pc-bar-row">
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color};"></div></div>
+        <div class="bar-pct">${pct}%</div>
+      </div>
+      <div class="pc-tasks">
+        ${shown.map(t => `<div class="pc-task-row">
+          <div class="pc-task-name">${t.task}</div>
+          ${statusBadge(t.status)}
+        </div>`).join('')}
+        ${more>0 ? `<div class="more-tasks">+${more} more task${more>1?'s':''}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function switchTab(n) {
+  document.getElementById('taskView').style.display = n===1 ? 'block' : 'none';
+  document.getElementById('personView').style.display = n===2 ? 'block' : 'none';
+  document.getElementById('tab1').className = 'tab' + (n===1?' active':'');
+  document.getElementById('tab2').className = 'tab' + (n===2?' active':'');
+}
+
+loadData();
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
