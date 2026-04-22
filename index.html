@@ -192,8 +192,12 @@
     </div>
   </div>
 
-  <!-- Person view — two column list -->
+  <!-- Person view — two column list with pagination -->
   <div id="personView" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="filter-info" id="personPageInfo">Showing all people</div>
+      <div class="page-btns" id="personPageBtns"></div>
+    </div>
     <div id="personListWrap" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div class="table-wrap">
         <table>
@@ -521,6 +525,9 @@ function clearPersonFilter() {
   applyFilters();
 }
 
+let personPage = 1;
+const PERSON_PAGE_SIZE = 40; // 20 per column
+
 function renderSummaryView() {
   const people = {};
   allTasks.forEach(t => {
@@ -548,6 +555,11 @@ function renderSummaryView() {
     return bTotal - aTotal;
   });
 
+  const totalPages = Math.max(1, Math.ceil(names.length / PERSON_PAGE_SIZE));
+  if (personPage > totalPages) personPage = totalPages;
+  const start = (personPage - 1) * PERSON_PAGE_SIZE;
+  const pageNames = names.slice(start, start + PERSON_PAGE_SIZE);
+
   function makeRow(name, i) {
     const p = people[name];
     return `<tr style="cursor:pointer;" onclick="drillPerson('${name.replace(/'/g,"\\'")}')">
@@ -559,16 +571,43 @@ function renderSummaryView() {
     </tr>`;
   }
 
-  const col1 = names.slice(0, 20);
-  const col2 = names.slice(20, 40);
+  const col1 = pageNames.slice(0, 20);
+  const col2 = pageNames.slice(20, 40);
 
   document.getElementById('personCol1').innerHTML = col1.length
-    ? col1.map((n,i) => makeRow(n, i)).join('')
+    ? col1.map((n,i) => makeRow(n, start+i)).join('')
     : `<tr><td colspan="5" class="empty-row">No data</td></tr>`;
 
   document.getElementById('personCol2').innerHTML = col2.length
-    ? col2.map((n,i) => makeRow(n, i+20)).join('')
+    ? col2.map((n,i) => makeRow(n, start+i+20)).join('')
     : `<tr><td colspan="5" style="padding:12px;color:#ddd;text-align:center;">—</td></tr>`;
+
+  // Pagination controls
+  const startNum = start + 1;
+  const endNum = Math.min(start + PERSON_PAGE_SIZE, names.length);
+  document.getElementById('personPageInfo').textContent =
+    `Showing ${startNum}–${endNum} of ${names.length} people`;
+
+  if (totalPages > 1) {
+    let html = `<button class="page-btn" onclick="goPersonPage(${personPage-1})" ${personPage===1?'disabled':''}>&#8592;</button>`;
+    for (let p = 1; p <= totalPages; p++) {
+      html += `<button class="page-btn ${p===personPage?'active':''}" onclick="goPersonPage(${p})">${p}</button>`;
+    }
+    html += `<button class="page-btn" onclick="goPersonPage(${personPage+1})" ${personPage===totalPages?'disabled':''}>&#8594;</button>`;
+    document.getElementById('personPageBtns').innerHTML = html;
+  } else {
+    document.getElementById('personPageBtns').innerHTML = '';
+  }
+}
+
+function goPersonPage(p) {
+  const people = {};
+  allTasks.forEach(t => { if (!people[t.assigned_to]) people[t.assigned_to] = {}; });
+  const totalPages = Math.max(1, Math.ceil(Object.keys(people).length / PERSON_PAGE_SIZE));
+  if (p < 1 || p > totalPages) return;
+  personPage = p;
+  renderSummaryView();
+  window.scrollTo(0, 0);
 }
 
 function switchView(n) {
