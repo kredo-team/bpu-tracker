@@ -169,7 +169,8 @@
         <thead>
           <tr>
             <th style="width:36px;">#</th>
-            <th style="width:140px;">Assigned to</th>
+            <th style="width:140px;">Assigned To</th>
+            <th class="hide-mobile" style="width:160px;">Assigned By</th>
             <th>Task</th>
             <th style="width:110px;">Status</th>
             <th class="hide-mobile" style="width:120px;">Deadline</th>
@@ -278,12 +279,13 @@ async function loadData() {
 
     allTasks = rows.slice(1).filter(r => r[0] && r[0].trim()).map(r => ({
       task:        (r[0]||'').trim(),
-      assigned_to: (r[1]||'Team').trim(),
+      assigned_to: (r[1]||'').trim(),
       status:      normalizeStatus(r[2]),
       deadline:    (r[3]||'—').trim(),
       priority:    (r[4]||'Medium').trim(),
       source:      (r[5]||'').trim(),
-      updated:     (r[6]||'').trim()
+      updated:     (r[6]||'').trim(),
+      assigned_by: (r[7]||'').trim()
     }));
 
     updateCounts();
@@ -379,7 +381,6 @@ function applyFilters() {
   const personLabel = person==='all' ? '' : person === '—' ? ' — unassigned' : ` for ${person}`;
   document.getElementById('filterInfo').textContent = `Showing ${filteredTasks.length} ${label}${personLabel}`;
 }
-
 function renderTable() {
   const tbody = document.getElementById('taskBody');
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE));
@@ -390,19 +391,23 @@ function renderTable() {
   const page = filteredTasks.slice(start, end);
 
   if (!page.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-row">No tasks match this filter</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">No tasks match this filter</td></tr>`;
     document.getElementById('pagination').style.display = 'none';
     return;
   }
 
   tbody.innerHTML = page.map((t, i) => {
     const isUnassigned = !t.assigned_to || t.assigned_to === '—' || t.assigned_to === '-' || t.assigned_to.trim() === '';
-    const assignedDisplay = isUnassigned
+    const assignedToDisplay = isUnassigned
       ? `<span style="color:#ccc;font-size:13px;">—</span>`
       : `<span style="font-size:12px;color:#444;font-weight:600;">${t.assigned_to}</span>`;
+    const assignedByDisplay = !t.assigned_by || t.assigned_by === '—' || t.assigned_by.trim() === ''
+      ? `<span style="color:#ccc;font-size:12px;">—</span>`
+      : `<span style="font-size:12px;color:#666;">${t.assigned_by}</span>`;
     return `<tr>
     <td style="color:#bbb;font-size:12px;">${start+i+1}</td>
-    <td>${assignedDisplay}</td>
+    <td>${assignedToDisplay}</td>
+    <td class="hide-mobile">${assignedByDisplay}</td>
     <td><div class="task-name">${t.task}</div></td>
     <td>${statusBadge(t.status)}</td>
     <td class="hide-mobile" style="font-size:12px;color:#555;">${t.deadline}</td>
